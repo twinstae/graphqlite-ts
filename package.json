@@ -1,0 +1,44 @@
+{
+  "name": "graphqlite-ts",
+  "version": "0.1.0",
+  "description": "TypeScript bindings for GraphQLite - graph database capabilities for SQLite",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "type": "module",
+  "files": [
+    "src/**/*.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "build": "echo 'No build step required - TypeScript is used directly'",
+    "build:native": "./scripts/build-native.sh"
+  },
+  "keywords": [
+    "graphqlite",
+    "graph",
+    "database",
+    "cypher",
+    "sqlite",
+    "graph-database",
+    "typescript",
+    "bun"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/graphqlite-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/graphqlite-ts/issues"
+  },
+  "homepage": "https://github.com/your-username/graphqlite-ts#readme"
+}
