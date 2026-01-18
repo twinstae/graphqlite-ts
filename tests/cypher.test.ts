@@ -4,30 +4,18 @@
 
 import { test, expect } from 'bun:test';
 import { Graph } from '../src/graph';
-import { GraphQLiteError } from '../src/types';
 
 const EXTENSION_PATH = process.env.GRAPHQLITE_EXTENSION_PATH || './native/graphqlite.so';
 
-function createTestGraph(): Graph | null {
-  try {
-    return new Graph(':memory:', {
-      extensionPath: EXTENSION_PATH,
-      enableLoadExtension: true,
-    });
-  } catch (error) {
-    if (error instanceof GraphQLiteError && error.message.includes('Failed to load')) {
-      return null; // Extension not available
-    }
-    throw error;
-  }
+function createTestGraph(): Graph {
+  return new Graph(':memory:', {
+    extensionPath: EXTENSION_PATH,
+    enableLoadExtension: true,
+  });
 }
 
 test('CREATE node with properties', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     graph.cypher("CREATE (n:Person {name: 'Alice', age: 30})");
@@ -43,19 +31,15 @@ test('CREATE node with properties', () => {
 
 test('CREATE edge between nodes', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     graph.cypher("CREATE (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'})");
     graph.cypher("MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) CREATE (a)-[:KNOWS {since: 2020}]->(b)");
     
-    const results = graph.cypher("MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name as from, b.name as to, r.since as since");
+    const results = graph.cypher("MATCH (a:Person)-[r:KNOWS]->(b:Person) RETURN a.name as fromName, b.name as toName, r.since as since");
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.from).toBe('Alice');
-    expect(results[0]?.to).toBe('Bob');
+    expect(results[0]?.fromName).toBe('Alice');
+    expect(results[0]?.toName).toBe('Bob');
     expect(results[0]?.since).toBe(2020);
   } finally {
     graph.close();
@@ -64,10 +48,6 @@ test('CREATE edge between nodes', () => {
 
 test('MATCH with WHERE clause', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     graph.cypher("CREATE (n1:Person {name: 'Alice', age: 30}), (n2:Person {name: 'Bob', age: 25})");
@@ -82,10 +62,6 @@ test('MATCH with WHERE clause', () => {
 
 test('RETURN multiple columns', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     graph.cypher("CREATE (n:Person {name: 'Alice', age: 30, city: 'NYC'})");
@@ -102,10 +78,6 @@ test('RETURN multiple columns', () => {
 
 test('Complex pattern matching', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     // Create a chain: Alice -> Bob -> Charlie
@@ -113,7 +85,7 @@ test('Complex pattern matching', () => {
     graph.cypher("MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}), (c:Person {name: 'Charlie'}) CREATE (a)-[:KNOWS]->(b)-[:KNOWS]->(c)");
     
     // Match two-hop path
-    const results = graph.cypher("MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name as start, c.name as end");
+    const results = graph.cypher("MATCH (a:Person)-[:KNOWS]->(b:Person)-[:KNOWS]->(c:Person) RETURN a.name as startName, c.name as endName");
     expect(results.length).toBeGreaterThan(0);
   } finally {
     graph.close();
@@ -122,10 +94,6 @@ test('Complex pattern matching', () => {
 
 test('Parameterized query', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     graph.cypher("CREATE (n:Person {name: 'Alice', age: 30})");
@@ -142,10 +110,6 @@ test('Parameterized query', () => {
 
 test('Error handling for invalid Cypher syntax', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     expect(() => {
@@ -158,10 +122,6 @@ test('Error handling for invalid Cypher syntax', () => {
 
 test('cypherRaw returns raw result structure', () => {
   const graph = createTestGraph();
-  if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
-  }
 
   try {
     graph.cypher("CREATE (n:Person {name: 'Alice'})");

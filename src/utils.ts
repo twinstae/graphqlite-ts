@@ -8,21 +8,56 @@ import type { CypherResult, CypherRow } from './types';
  * Parse JSON result from cypher() function
  */
 export function parseCypherResult(jsonStr: string): CypherResult {
+  // Check if it's an error response
+  if (typeof jsonStr === 'string' && jsonStr.startsWith('Error')) {
+    throw new Error(jsonStr);
+  }
+  
+  // Check if it's a success message (for CREATE/UPDATE/DELETE queries)
+  if (typeof jsonStr === 'string' && jsonStr.includes('Query executed successfully')) {
+    // Return empty result for non-RETURN queries
+    return { columns: [], data: [] };
+  }
+  
   try {
     const parsed = JSON.parse(jsonStr);
     
-    // Check if it's an error response
+    // Check if parsed result is an error
     if (typeof parsed === 'string' && parsed.startsWith('Error')) {
       throw new Error(parsed);
     }
     
+    // Handle {columns, data} format
     if (parsed && typeof parsed === 'object' && 'columns' in parsed && 'data' in parsed) {
       return parsed as CypherResult;
+    }
+    
+    // Handle array format: [{"name":"Alice","age":30}]
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Extract columns from first object
+      const firstRow = parsed[0];
+      if (typeof firstRow === 'object' && firstRow !== null) {
+        const columns = Object.keys(firstRow);
+        const data = parsed.map((row: any) => 
+          columns.map(col => row[col] ?? null)
+        );
+        return { columns, data };
+      }
+    }
+    
+    // Handle empty array
+    if (Array.isArray(parsed) && parsed.length === 0) {
+      return { columns: [], data: [] };
     }
     
     // Handle empty result
     return { columns: [], data: [] };
   } catch (error) {
+    // If JSON parsing fails, it might be a plain success message
+    if (typeof jsonStr === 'string' && jsonStr.includes('successfully')) {
+      return { columns: [], data: [] };
+    }
+    
     if (error instanceof Error) {
       throw error;
     }

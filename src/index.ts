@@ -11,6 +11,11 @@ export type {
   CypherResult,
   GraphOptions,
   GraphStats,
+  UpsertNodeOptions,
+  UpsertEdgeOptions,
+  PageRankResult,
+  LouvainResult,
+  ShortestPathResult,
   GraphQLiteError,
 } from './types';
 

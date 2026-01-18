@@ -47,6 +47,44 @@ export interface GraphStats {
 }
 
 /**
+ * Options for upserting nodes
+ */
+export interface UpsertNodeOptions {
+  /** Optional label for the node */
+  label?: string;
+}
+
+/**
+ * Options for upserting edges
+ */
+export interface UpsertEdgeOptions {
+  /** Optional relationship type */
+  relType?: string;
+}
+
+/**
+ * PageRank algorithm result
+ * Maps node ID to PageRank score
+ */
+export type PageRankResult = Record<string, number>;
+
+/**
+ * Louvain community detection algorithm result
+ * Maps node ID to community ID
+ */
+export type LouvainResult = Record<string, number>;
+
+/**
+ * Shortest path algorithm result
+ */
+export interface ShortestPathResult {
+  /** Array of node IDs in the path */
+  path: string[];
+  /** Optional distance/cost of the path */
+  distance?: number;
+}
+
+/**
  * Error thrown by GraphQLite operations
  */
 export class GraphQLiteError extends Error {

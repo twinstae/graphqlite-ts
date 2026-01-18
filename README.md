@@ -130,6 +130,83 @@ Unload the graph from cache.
 
 Reload the graph from the database into cache.
 
+##### `upsertNode(nodeId: string, properties: Record<string, CypherValue>, label?: string): void`
+
+Upsert a node (create if not exists, update if exists). Uses Cypher MERGE for idempotent operations.
+
+```typescript
+// Create or update a node with a label
+graph.upsertNode('alice', { name: 'Alice', age: 30 }, 'Person');
+
+// Create or update a node without a label
+graph.upsertNode('node1', { value: 42 });
+```
+
+##### `upsertEdge(sourceId: string, targetId: string, properties: Record<string, CypherValue>, relType?: string): void`
+
+Upsert an edge (create if not exists, update if exists). Uses Cypher MERGE for idempotent operations.
+
+```typescript
+// Create or update an edge with relationship type
+graph.upsertEdge('alice', 'bob', { since: 2020 }, 'KNOWS');
+
+// Create or update an edge without explicit type (defaults to 'RELATED')
+graph.upsertEdge('node1', 'node2', { weight: 5 });
+```
+
+##### `pagerank(damping?: number, iterations?: number): PageRankResult`
+
+Compute PageRank scores for all nodes in the graph.
+
+- `damping`: Damping factor (default: `0.85`)
+- `iterations`: Number of iterations (default: `20`)
+- Returns: Map of node IDs to PageRank scores
+
+```typescript
+const ranks = graph.pagerank(0.85, 20);
+console.log(ranks['alice']); // 0.123...
+```
+
+##### `louvain(resolution?: number): LouvainResult`
+
+Compute Louvain community detection algorithm to find communities in the graph.
+
+- `resolution`: Resolution parameter (default: `1.0`)
+- Returns: Map of node IDs to community IDs
+
+```typescript
+const communities = graph.louvain(1.0);
+console.log(communities['alice']); // 0 (community ID)
+```
+
+##### `shortestPath(sourceId: string, targetId: string, weight?: string): ShortestPathResult | null`
+
+Find shortest path between two nodes using Dijkstra's algorithm.
+
+- `sourceId`: Source node identifier
+- `targetId`: Target node identifier
+- `weight`: Optional property name to use as edge weight
+- Returns: Path result with node IDs and optional distance, or `null` if no path exists
+
+```typescript
+const path = graph.shortestPath('alice', 'bob');
+if (path) {
+  console.log(path.path); // ['alice', 'charlie', 'bob']
+  console.log(path.distance); // 2 (if weight property specified)
+}
+
+// With weighted edges
+const weightedPath = graph.shortestPath('alice', 'bob', 'cost');
+```
+
+##### `dijkstra(sourceId: string, targetId: string, weight?: string): ShortestPathResult | null`
+
+Alias for `shortestPath()`. Same functionality as `shortestPath()`.
+
+```typescript
+const path = graph.dijkstra('alice', 'bob', 'cost');
+```
+
 ##### `getDatabase(): Database`
 
 Access the underlying Bun SQLite database object.
@@ -181,6 +258,20 @@ graph.cypher(`
 `);
 ```
 
+### Upserting Nodes and Edges
+
+```typescript
+// Upsert nodes (create or update)
+graph.upsertNode('alice', { name: 'Alice', age: 30 }, 'Person');
+graph.upsertNode('alice', { name: 'Alice', age: 31 }, 'Person'); // Updates age
+
+// Upsert edges (create or update)
+graph.upsertNode('alice', { name: 'Alice' }, 'Person');
+graph.upsertNode('bob', { name: 'Bob' }, 'Person');
+graph.upsertEdge('alice', 'bob', { since: 2020 }, 'KNOWS');
+graph.upsertEdge('alice', 'bob', { since: 2021 }, 'KNOWS'); // Updates 'since' property
+```
+
 ### Querying with MATCH
 
 ```typescript
@@ -217,6 +308,44 @@ const results = graph.cypher(
   "MATCH (p:Person {name: $name}) RETURN p.age as age",
   { name: 'Alice' }
 );
+```
+
+### Graph Algorithms
+
+```typescript
+// PageRank - find important nodes
+graph.upsertNode('alice', { name: 'Alice' }, 'Person');
+graph.upsertNode('bob', { name: 'Bob' }, 'Person');
+graph.upsertEdge('alice', 'bob', {}, 'FOLLOWS');
+graph.upsertEdge('bob', 'alice', {}, 'FOLLOWS');
+
+const ranks = graph.pagerank(0.85, 20);
+console.log(ranks['alice']); // PageRank score
+
+// Community Detection with Louvain
+const communities = graph.louvain(1.0);
+console.log(communities['alice']); // Community ID
+
+// Shortest Path
+graph.upsertNode('charlie', { name: 'Charlie' }, 'Person');
+graph.upsertEdge('alice', 'charlie', {}, 'KNOWS');
+graph.upsertEdge('charlie', 'bob', {}, 'KNOWS');
+
+const path = graph.shortestPath('alice', 'bob');
+if (path) {
+  console.log(path.path); // ['alice', 'charlie', 'bob']
+}
+
+// Shortest path with weighted edges
+graph.upsertEdge('alice', 'bob', { cost: 10 }, 'CONNECTED');
+graph.upsertEdge('alice', 'charlie', { cost: 5 }, 'CONNECTED');
+graph.upsertEdge('charlie', 'bob', { cost: 3 }, 'CONNECTED');
+
+const weightedPath = graph.dijkstra('alice', 'bob', 'cost');
+if (weightedPath) {
+  console.log(weightedPath.path); // ['alice', 'charlie', 'bob']
+  console.log(weightedPath.distance); // 8 (5 + 3)
+}
 ```
 
 ## Platform Support

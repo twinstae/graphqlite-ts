@@ -25,8 +25,7 @@ function createTestGraph(): Graph | null {
 test('Multiple queries do not leak memory', () => {
   const graph = createTestGraph();
   if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
+    throw new Error('Extension not available');
   }
 
   try {
@@ -48,8 +47,7 @@ test('Multiple queries do not leak memory', () => {
 test('Large result sets are handled correctly', () => {
   const graph = createTestGraph();
   if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
+    throw new Error('Extension not available');
   }
 
   try {
@@ -69,8 +67,7 @@ test('Large result sets are handled correctly', () => {
 test('Null values are handled correctly', () => {
   const graph = createTestGraph();
   if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
+    throw new Error('Extension not available');
   }
 
   try {
@@ -88,8 +85,7 @@ test('Null values are handled correctly', () => {
 test('Invalid input handling', () => {
   const graph = createTestGraph();
   if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
+    throw new Error('Extension not available');
   }
 
   try {
@@ -115,8 +111,7 @@ test('Invalid input handling', () => {
 test('Closed database cannot be used', () => {
   const graph = createTestGraph();
   if (!graph) {
-    console.warn('Skipping test: Extension not available');
-    return;
+    throw new Error('Extension not available');
   }
 
   graph.close();
