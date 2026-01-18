@@ -2,6 +2,7 @@
  * Utility functions for GraphQLite
  */
 
+import * as fs from 'node:fs';
 import type { CypherResult, CypherRow, CypherValue } from './types';
 
 /**
@@ -118,7 +119,6 @@ export function resolveExtensionPath(customPath?: string): string | null {
   
   // In Node.js/Bun, we can check if file exists
   try {
-    const fs = require('fs');
     for (const path of searchPaths) {
       try {
         if (fs.existsSync(path)) {

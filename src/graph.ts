@@ -3,6 +3,8 @@
  */
 
 import { Database } from 'bun:sqlite';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 import type {
   CypherValue,
   CypherRow,
@@ -69,8 +71,6 @@ export class Graph {
   private loadExtension(extensionPath: string): void {
     try {
       // Convert to absolute path
-      const path = require('path');
-      const fs = require('fs');
       const absolutePath = path.isAbsolute(extensionPath) 
         ? extensionPath 
         : path.resolve(process.cwd(), extensionPath);
@@ -104,6 +104,47 @@ export class Graph {
   }
 
   /**
+   * Ensure extension is loaded, throw if not
+   */
+  private ensureExtensionLoaded(): void {
+    if (!this.extensionLoaded) {
+      throw new GraphQLiteError(
+        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
+      );
+    }
+  }
+
+  /**
+   * Internal method to execute a Cypher query and return the raw result string
+   */
+  private executeCypherQuery(query: string, params?: Record<string, CypherValue>): string {
+    this.ensureExtensionLoaded();
+
+    try {
+      let stmt;
+      let result: { result: string } | undefined;
+      
+      if (params) {
+        const paramsJson = JSON.stringify(params);
+        stmt = this.db.prepare("SELECT cypher(?1, ?2) as result");
+        result = stmt.get(query, paramsJson) as { result: string } | undefined;
+      } else {
+        stmt = this.db.prepare("SELECT cypher(?1) as result");
+        result = stmt.get(query) as { result: string } | undefined;
+      }
+      
+      return result?.result || '';
+    } catch (error) {
+      if (error instanceof GraphQLiteError) {
+        throw error;
+      }
+      throw new GraphQLiteError(
+        `Cypher query failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
    * Execute a Cypher query
    * 
    * @param query - Cypher query string
@@ -120,40 +161,14 @@ export class Graph {
     query: string,
     params?: Record<string, CypherValue>
   ): T[] {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
+    const resultStr = this.executeCypherQuery(query, params);
+    
+    if (!resultStr) {
+      return [];
     }
 
-    try {
-      // Build parameterized query if params provided
-      let stmt;
-      let result: { result: string } | undefined;
-      
-      if (params) {
-        const paramsJson = JSON.stringify(params);
-        stmt = this.db.prepare("SELECT cypher(?1, ?2) as result");
-        result = stmt.get(query, paramsJson) as { result: string } | undefined;
-      } else {
-        stmt = this.db.prepare("SELECT cypher(?1) as result");
-        result = stmt.get(query) as { result: string } | undefined;
-      }
-      
-      if (!result?.result) {
-        return [];
-      }
-
-      const cypherResult = parseCypherResult(result.result);
-      return resultToRows(cypherResult) as T[];
-    } catch (error) {
-      if (error instanceof GraphQLiteError) {
-        throw error;
-      }
-      throw new GraphQLiteError(
-        `Cypher query failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    const cypherResult = parseCypherResult(resultStr);
+    return resultToRows(cypherResult) as T[];
   }
 
   /**
@@ -167,38 +182,13 @@ export class Graph {
     query: string,
     params?: Record<string, CypherValue>
   ): CypherResult {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
+    const resultStr = this.executeCypherQuery(query, params);
+    
+    if (!resultStr) {
+      return { columns: [], data: [] };
     }
 
-    try {
-      let stmt;
-      let result: { result: string } | undefined;
-      
-      if (params) {
-        const paramsJson = JSON.stringify(params);
-        stmt = this.db.prepare("SELECT cypher(?1, ?2) as result");
-        result = stmt.get(query, paramsJson) as { result: string } | undefined;
-      } else {
-        stmt = this.db.prepare("SELECT cypher(?1) as result");
-        result = stmt.get(query) as { result: string } | undefined;
-      }
-      
-      if (!result?.result) {
-        return { columns: [], data: [] };
-      }
-
-      return parseCypherResult(result.result);
-    } catch (error) {
-      if (error instanceof GraphQLiteError) {
-        throw error;
-      }
-      throw new GraphQLiteError(
-        `Cypher query failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    return parseCypherResult(resultStr);
   }
 
   /**
@@ -272,11 +262,7 @@ export class Graph {
     properties: Record<string, CypherValue>,
     label?: string
   ): void {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
-    }
+    this.ensureExtensionLoaded();
 
     const escapedId = escapeCypherString(nodeId);
     const nodeLabel = label || 'Entity';
@@ -318,11 +304,7 @@ export class Graph {
     properties: Record<string, CypherValue>,
     relType?: string
   ): void {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
-    }
+    this.ensureExtensionLoaded();
 
     const relationshipType = relType || 'RELATED';
     const escSource = escapeCypherString(sourceId);
@@ -371,11 +353,7 @@ export class Graph {
    * ```
    */
   pagerank(damping: number = 0.85, iterations: number = 20): PageRankResult {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
-    }
+    this.ensureExtensionLoaded();
 
     try {
       // Use Cypher function: RETURN pageRank(damping, iterations)
@@ -399,6 +377,9 @@ export class Graph {
         return ranks;
       }
     } catch (error) {
+      if (error instanceof GraphQLiteError) {
+        throw error;
+      }
       throw new GraphQLiteError(
         `PageRank computation failed: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -420,11 +401,7 @@ export class Graph {
    * ```
    */
   louvain(resolution: number = 1.0): LouvainResult {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
-    }
+    this.ensureExtensionLoaded();
 
     try {
       // Use Cypher function: RETURN louvain(resolution)
@@ -448,6 +425,9 @@ export class Graph {
         return communities;
       }
     } catch (error) {
+      if (error instanceof GraphQLiteError) {
+        throw error;
+      }
       throw new GraphQLiteError(
         `Louvain computation failed: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -478,11 +458,7 @@ export class Graph {
     targetId: string,
     weight?: string
   ): ShortestPathResult | null {
-    if (!this.extensionLoaded) {
-      throw new GraphQLiteError(
-        'GraphQLite extension not loaded. Provide extensionPath in constructor options.'
-      );
-    }
+    this.ensureExtensionLoaded();
 
     try {
       // Use Cypher function: RETURN dijkstra("source", "target", "weight?")
@@ -514,6 +490,9 @@ export class Graph {
         };
       }
     } catch (error) {
+      if (error instanceof GraphQLiteError) {
+        throw error;
+      }
       throw new GraphQLiteError(
         `Shortest path computation failed: ${error instanceof Error ? error.message : String(error)}`
       );

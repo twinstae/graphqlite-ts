@@ -136,3 +136,39 @@ test('cypherRaw returns raw result structure', () => {
   }
 });
 
+test('cypherRaw with parameters', () => {
+  const graph = createTestGraph();
+
+  try {
+    graph.cypher("CREATE (n:Person {name: 'Alice', age: 30})");
+    
+    const result = graph.cypherRaw("MATCH (n:Person) WHERE n.name = $name RETURN n.age as age", {
+      name: 'Alice',
+    });
+    expect(result).toHaveProperty('columns');
+    expect(result).toHaveProperty('data');
+    expect(Array.isArray(result.columns)).toBe(true);
+    expect(Array.isArray(result.data)).toBe(true);
+    expect(result.columns).toContain('age');
+    expect(result.data.length).toBeGreaterThan(0);
+    expect(result.data[0][0]).toBe(30);
+  } finally {
+    graph.close();
+  }
+});
+
+test('Value escaping handles special characters', () => {
+  const graph = createTestGraph();
+
+  try {
+    // Test escaping of single quotes in strings
+    graph.cypher("CREATE (n:Person {name: 'O\\'Reilly', quote: \"It's a test\"})");
+    
+    const results = graph.cypher("MATCH (n:Person) WHERE n.name = 'O\\'Reilly' RETURN n.name as name, n.quote as quote");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.name).toBe("O'Reilly");
+  } finally {
+    graph.close();
+  }
+});
+

@@ -55,3 +55,19 @@ test('Graph close() works', () => {
   expect(() => graph.close()).not.toThrow();
 });
 
+test('getDatabase() returns Database instance', () => {
+  const graph = new Graph(':memory:', {
+    extensionPath: EXTENSION_PATH,
+    enableLoadExtension: true,
+  });
+
+  try {
+    const db = graph.getDatabase();
+    expect(db).toBeDefined();
+    // Database should have methods like prepare, run, etc.
+    expect(typeof db.prepare).toBe('function');
+  } finally {
+    graph.close();
+  }
+});
+

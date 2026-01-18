@@ -222,3 +222,36 @@ test('dijkstra alias works', () => {
     graph.close();
   }
 });
+
+test('upsertNode handles special characters in values', () => {
+  const graph = createTestGraph();
+
+  try {
+    // Test with single quotes, which need escaping
+    graph.upsertNode('test', { name: "O'Reilly", quote: "It's a test", description: 'Has "quotes" too' }, 'Test');
+    
+    const results = graph.cypher("MATCH (n {id: 'test'}) RETURN n.name as name, n.quote as quote, n.description as description");
+    expect(results.length).toBe(1);
+    expect(results[0]?.name).toBe("O'Reilly");
+    expect(results[0]?.quote).toBe("It's a test");
+    expect(results[0]?.description).toBe('Has "quotes" too');
+  } finally {
+    graph.close();
+  }
+});
+
+test('upsertEdge handles special characters in properties', () => {
+  const graph = createTestGraph();
+
+  try {
+    graph.upsertNode('alice', { name: 'Alice' }, 'Person');
+    graph.upsertNode('bob', { name: 'Bob' }, 'Person');
+    graph.upsertEdge('alice', 'bob', { note: "Alice's friend" }, 'KNOWS');
+    
+    const results = graph.cypher("MATCH (a {id: 'alice'})-[r:KNOWS]->(b {id: 'bob'}) RETURN r.note as note");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.note).toBe("Alice's friend");
+  } finally {
+    graph.close();
+  }
+});
