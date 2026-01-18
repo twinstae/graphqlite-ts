@@ -2,7 +2,7 @@
  * Utility functions for GraphQLite
  */
 
-import type { CypherResult, CypherRow } from './types';
+import type { CypherResult, CypherRow, CypherValue } from './types';
 
 /**
  * Parse JSON result from cypher() function
@@ -133,5 +133,49 @@ export function resolveExtensionPath(customPath?: string): string | null {
   }
   
   return null;
+}
+
+/**
+ * Escape single quotes in a string for use in Cypher queries
+ */
+export function escapeCypherString(str: string): string {
+  return str.replace(/'/g, "\\'");
+}
+
+/**
+ * Format a Cypher value to its string representation
+ */
+export function formatCypherValue(value: CypherValue): string {
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value === 'string') {
+    return `'${escapeCypherString(value)}'`;
+  }
+  if (typeof value === 'boolean') {
+    return value.toString().toLowerCase();
+  }
+  return String(value);
+}
+
+/**
+ * Format properties as a Cypher property map string
+ * @example formatProperties({ name: 'Alice', age: 30 }) => "name: 'Alice', age: 30"
+ */
+export function formatCypherProperties(properties: Record<string, CypherValue>): string {
+  return Object.entries(properties)
+    .map(([key, value]) => {
+      if (value === null) {
+        return `${key}: null`;
+      }
+      if (typeof value === 'string') {
+        return `${key}: '${escapeCypherString(String(value))}'`;
+      }
+      if (typeof value === 'boolean') {
+        return `${key}: ${value.toString().toLowerCase()}`;
+      }
+      return `${key}: ${value}`;
+    })
+    .join(', ');
 }
 

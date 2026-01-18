@@ -14,7 +14,14 @@ import type {
   ShortestPathResult,
 } from './types';
 import { GraphQLiteError } from './types';
-import { parseCypherResult, resultToRows, resolveExtensionPath } from './utils';
+import {
+  parseCypherResult,
+  resultToRows,
+  resolveExtensionPath,
+  escapeCypherString,
+  formatCypherValue,
+  formatCypherProperties,
+} from './utils';
 
 /**
  * A GraphQLite database connection
@@ -271,7 +278,7 @@ export class Graph {
       );
     }
 
-    const escapedId = nodeId.replace(/'/g, "\\'");
+    const escapedId = escapeCypherString(nodeId);
     const nodeLabel = label || 'Entity';
     const allProperties = { ...properties, id: nodeId };
 
@@ -282,31 +289,12 @@ export class Graph {
     if (exists) {
       // Update existing node - set each property individually
       for (const [key, value] of Object.entries(properties)) {
-        let valStr: string;
-        if (value === null) {
-          valStr = 'null';
-        } else if (typeof value === 'string') {
-          valStr = `'${value.replace(/'/g, "\\'")}'`;
-        } else if (typeof value === 'boolean') {
-          valStr = value.toString().toLowerCase();
-        } else {
-          valStr = String(value);
-        }
+        const valStr = formatCypherValue(value);
         this.cypher(`MATCH (n {id: '${escapedId}'}) SET n.${key} = ${valStr}`);
       }
     } else {
       // Create new node with all properties
-      const propPairs = Object.entries(allProperties).map(([key, value]) => {
-        if (value === null) {
-          return `${key}: null`;
-        } else if (typeof value === 'string') {
-          return `${key}: '${String(value).replace(/'/g, "\\'")}'`;
-        } else if (typeof value === 'boolean') {
-          return `${key}: ${value.toString().toLowerCase()}`;
-        } else {
-          return `${key}: ${value}`;
-        }
-      }).join(', ');
+      const propPairs = formatCypherProperties(allProperties);
       this.cypher(`CREATE (n:${nodeLabel} {${propPairs}})`);
     }
   }
@@ -337,8 +325,8 @@ export class Graph {
     }
 
     const relationshipType = relType || 'RELATED';
-    const escSource = sourceId.replace(/'/g, "\\'");
-    const escTarget = targetId.replace(/'/g, "\\'");
+    const escSource = escapeCypherString(sourceId);
+    const escTarget = escapeCypherString(targetId);
 
     // Check if edge exists
     const checkResult = this.cypher(
@@ -349,16 +337,7 @@ export class Graph {
     if (exists) {
       // Update existing edge - set each property individually
       for (const [key, value] of Object.entries(properties)) {
-        let valStr: string;
-        if (value === null) {
-          valStr = 'null';
-        } else if (typeof value === 'string') {
-          valStr = `'${value.replace(/'/g, "\\'")}'`;
-        } else if (typeof value === 'boolean') {
-          valStr = value.toString().toLowerCase();
-        } else {
-          valStr = String(value);
-        }
+        const valStr = formatCypherValue(value);
         this.cypher(
           `MATCH (a {id: '${escSource}'})-[r:${relationshipType}]->(b {id: '${escTarget}'}) SET r.${key} = ${valStr}`
         );
@@ -366,17 +345,7 @@ export class Graph {
     } else {
       // Create new edge
       if (Object.keys(properties).length > 0) {
-        const propPairs = Object.entries(properties).map(([key, value]) => {
-          if (value === null) {
-            return `${key}: null`;
-          } else if (typeof value === 'string') {
-            return `${key}: '${String(value).replace(/'/g, "\\'")}'`;
-          } else if (typeof value === 'boolean') {
-            return `${key}: ${value.toString().toLowerCase()}`;
-          } else {
-            return `${key}: ${value}`;
-          }
-        }).join(', ');
+        const propPairs = formatCypherProperties(properties);
         this.cypher(
           `MATCH (a {id: '${escSource}'}), (b {id: '${escTarget}'}) CREATE (a)-[r:${relationshipType} {${propPairs}}]->(b)`
         );
