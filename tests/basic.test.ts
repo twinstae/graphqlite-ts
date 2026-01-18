@@ -63,9 +63,9 @@ test('getDatabase() returns Database instance', () => {
 
   try {
     const db = graph.getDatabase();
-    expect(db).toBeDefined();
-    // Database should have methods like prepare, run, etc.
-    expect(typeof db.prepare).toBe('function');
+    expect(db).toStrictEqual(expect.objectContaining({
+      prepare: expect.any(Function),
+    }));
   } finally {
     graph.close();
   }

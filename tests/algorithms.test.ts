@@ -23,10 +23,10 @@ test('Graph statistics work', () => {
     graph.cypher("MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) CREATE (a)-[:KNOWS]->(b)");
     
     const stats = graph.getStats();
-    expect(stats).toHaveProperty('nodes');
-    expect(stats).toHaveProperty('edges');
-    expect(typeof stats.nodes).toBe('number');
-    expect(typeof stats.edges).toBe('number');
+    expect(stats).toStrictEqual({
+      nodes: expect.any(Number),
+      edges: expect.any(Number),
+    });
   } finally {
     graph.close();
   }
@@ -79,9 +79,7 @@ test('upsertNode creates new node', () => {
     graph.upsertNode('alice', { name: 'Alice', age: 30 }, 'Person');
     
     const results = graph.cypher("MATCH (n {id: 'alice'}) RETURN n.name as name, n.age as age");
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.name).toBe('Alice');
-    expect(results[0]?.age).toBe(30);
+    expect(results[0]).toStrictEqual({ name: 'Alice', age: 30 });
   } finally {
     graph.close();
   }
@@ -95,9 +93,7 @@ test('upsertNode updates existing node', () => {
     graph.upsertNode('alice', { name: 'Alice', age: 31 }, 'Person');
     
     const results = graph.cypher("MATCH (n {id: 'alice'}) RETURN n.name as name, n.age as age");
-    expect(results.length).toBe(1);
-    expect(results[0]?.name).toBe('Alice');
-    expect(results[0]?.age).toBe(31);
+    expect(results).toStrictEqual([{ name: 'Alice', age: 31 }]);
   } finally {
     graph.close();
   }
@@ -112,8 +108,7 @@ test('upsertEdge creates new edge', () => {
     graph.upsertEdge('alice', 'bob', { since: 2020 }, 'KNOWS');
     
     const results = graph.cypher("MATCH (a {id: 'alice'})-[r:KNOWS]->(b {id: 'bob'}) RETURN r.since as since");
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.since).toBe(2020);
+    expect(results[0]).toStrictEqual({ since: 2020 });
   } finally {
     graph.close();
   }
@@ -129,8 +124,7 @@ test('upsertEdge updates existing edge', () => {
     graph.upsertEdge('alice', 'bob', { since: 2021 }, 'KNOWS');
     
     const results = graph.cypher("MATCH (a {id: 'alice'})-[r:KNOWS]->(b {id: 'bob'}) RETURN r.since as since");
-    expect(results.length).toBe(1);
-    expect(results[0]?.since).toBe(2021);
+    expect(results).toStrictEqual([{ since: 2021 }]);
   } finally {
     graph.close();
   }
@@ -145,11 +139,10 @@ test('pagerank returns valid results', () => {
     graph.upsertEdge('alice', 'bob', {}, 'KNOWS');
     
     const ranks = graph.pagerank();
-    expect(typeof ranks).toBe('object');
-    expect(ranks).toHaveProperty('alice');
-    expect(ranks).toHaveProperty('bob');
-    expect(typeof ranks.alice).toBe('number');
-    expect(typeof ranks.bob).toBe('number');
+    expect(ranks).toStrictEqual({
+      alice: expect.any(Number),
+      bob: expect.any(Number),
+    });
   } finally {
     graph.close();
   }
@@ -164,11 +157,10 @@ test('louvain returns valid results', () => {
     graph.upsertEdge('alice', 'bob', {}, 'KNOWS');
     
     const communities = graph.louvain();
-    expect(typeof communities).toBe('object');
-    expect(communities).toHaveProperty('alice');
-    expect(communities).toHaveProperty('bob');
-    expect(typeof communities.alice).toBe('number');
-    expect(typeof communities.bob).toBe('number');
+    expect(communities).toStrictEqual({
+      alice: expect.any(Number),
+      bob: expect.any(Number),
+    });
   } finally {
     graph.close();
   }
@@ -183,10 +175,10 @@ test('shortestPath finds path between connected nodes', () => {
     graph.upsertEdge('alice', 'bob', {}, 'KNOWS');
     
     const path = graph.shortestPath('alice', 'bob');
-    expect(path).not.toBeNull();
-    expect(path).toHaveProperty('path');
-    expect(Array.isArray(path!.path)).toBe(true);
-    expect(path!.path.length).toBeGreaterThan(0);
+    expect(path).toStrictEqual({
+      distance: 1,
+      path: ['alice', 'bob'],
+    });
   } finally {
     graph.close();
   }
@@ -216,8 +208,10 @@ test('dijkstra alias works', () => {
     graph.upsertEdge('alice', 'bob', {}, 'KNOWS');
     
     const path = graph.dijkstra('alice', 'bob');
-    expect(path).not.toBeNull();
-    expect(path).toHaveProperty('path');
+    expect(path).toStrictEqual({
+      distance: 1,
+      path: ['alice', 'bob'],
+    });
   } finally {
     graph.close();
   }
@@ -231,10 +225,11 @@ test('upsertNode handles special characters in values', () => {
     graph.upsertNode('test', { name: "O'Reilly", quote: "It's a test", description: 'Has "quotes" too' }, 'Test');
     
     const results = graph.cypher("MATCH (n {id: 'test'}) RETURN n.name as name, n.quote as quote, n.description as description");
-    expect(results.length).toBe(1);
-    expect(results[0]?.name).toBe("O'Reilly");
-    expect(results[0]?.quote).toBe("It's a test");
-    expect(results[0]?.description).toBe('Has "quotes" too');
+    expect(results).toStrictEqual([{
+      name: "O'Reilly",
+      quote: "It's a test",
+      description: 'Has "quotes" too',
+    }]);
   } finally {
     graph.close();
   }
@@ -249,8 +244,7 @@ test('upsertEdge handles special characters in properties', () => {
     graph.upsertEdge('alice', 'bob', { note: "Alice's friend" }, 'KNOWS');
     
     const results = graph.cypher("MATCH (a {id: 'alice'})-[r:KNOWS]->(b {id: 'bob'}) RETURN r.note as note");
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.note).toBe("Alice's friend");
+    expect(results[0]).toStrictEqual({ note: "Alice's friend" });
   } finally {
     graph.close();
   }
