@@ -151,7 +151,7 @@ test('cypherRaw with parameters', () => {
     expect(Array.isArray(result.data)).toBe(true);
     expect(result.columns).toContain('age');
     expect(result.data.length).toBeGreaterThan(0);
-    expect(result.data[0][0]).toBe(30);
+    expect(result.data[0]?.[0]).toBe(30);
   } finally {
     graph.close();
   }
